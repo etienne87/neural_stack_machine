@@ -6,7 +6,7 @@
 import numpy as np
 
 def r_t_forward(Vt,st):
-    r = np.zeros(stack_width)
+    r = np.zeros(Vt.shape[1])
     cum_sum = np.cumsum(st)
     uncov = cum_sum[-1]-cum_sum
     w = np.minimum(st, np.maximum(0, 1 - uncov))
