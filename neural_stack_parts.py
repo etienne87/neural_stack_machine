@@ -22,6 +22,7 @@ def s_t_forward(s_prev,ut,dt):
     else:
         s_prime = s_prev
         
+    print(s_prime.shape)
     s_next = np.concatenate((s_prime, np.array(dt,ndmin=1)),axis=0)
     return s_next
 
@@ -30,9 +31,6 @@ def pop_forward(s_prev,V_prev):
     s_next = s_prev[ids]
     V_next = V_prev[ids]
     return s_next, V_next
-
-#now there is a need for backward of read, push & pop
-
     
 def pushAndPop(V_t,v_t,d_t,u_t,s_t):  
     #==============#

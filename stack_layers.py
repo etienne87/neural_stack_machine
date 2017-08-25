@@ -69,7 +69,7 @@ Read from stack:
         if "dirt" > 1, no read 
         if "dirt" <= 1, read by min(1-dirt, st)
 """
-def read_stack_forward(Vt,st):
+def read_forward(Vt,st):
     r = np.zeros(Vt.shape[1])
     cum_sum = np.cumsum(st,axis=0)
     uncov = 1 - (cum_sum[-1]-cum_sum)
@@ -79,7 +79,7 @@ def read_stack_forward(Vt,st):
     cache = (Vt,st,w,uncov,uncov_plus)
     return r, cache
 
-def read_stack_backward(dout, cache):
+def read_backward(dout, cache):
     Vt, st, w, uncov, uncov_plus = cache
     w = w.reshape(1,-1)
     dout = dout.reshape(1,-1)  
@@ -101,7 +101,7 @@ def push_forward(s_prev,ut,dt):
         s_prime = np.maximum(0, s_prev - np.maximum(0, uncov))
     else:
         s_prime = s_prev    
-    s_next = concat_forward(s_prime,dt)
+    s_next = np.concatenate((s_prime, dt),axis=0)
     cache = (s_prev,ut,dt,s_prime, uncov)
     return s_next, cache
 
@@ -113,7 +113,7 @@ def push_backward(dout,cache):
         uncov_plus = np.maximum(0,uncov)
         dmax1 = np.where(s_prev > uncov_plus,ds_prime,0)
         dmax2 = -np.where(uncov > 0,dmax1,0)
-        dut = dmax2
+        dut = dmax2.sum(axis=0, keepdims=True)
         ds_prev = dmax1-rev_cumsum_backward(dmax2)
     else:
         ds_prev = ds_prime
@@ -154,15 +154,15 @@ if __name__ == '__main__':
 #     stack_width = 3
 #     st = np.random.rand(length,)   #making sure no st is greater > 1
 #     Vt = np.random.rand(length,stack_width)
-#     next_r, cache = read_stack_forward(Vt,st)
+#     next_r, cache = read_forward(Vt,st)
 #     dnext_r = np.random.randn(*next_r.shape)
 #     
-#     fV = lambda Vt: read_stack_forward(Vt,st)[0]
-#     fs = lambda st: read_stack_forward(Vt,st)[0] 
+#     fV = lambda Vt: read_forward(Vt,st)[0]
+#     fs = lambda st: read_forward(Vt,st)[0] 
 #     
 #     dV_num = num_grad(fV, Vt, dnext_r)
 #     ds_num = num_grad(fs, st, dnext_r, h=1e-5)
-#     dV,ds = read_stack_backward(dnext_r, cache) 
+#     dV,ds = read_backward(dnext_r, cache) 
 #     print(dV_num.shape, dV.shape)
 #     print(ds_num.shape, ds.shape)
 #     print( 'read stack V error: ', rel_error(dV_num, dV))
@@ -178,9 +178,23 @@ if __name__ == '__main__':
     s_next, cache = push_forward(s_prev,ut,dt)
     ds_next = np.random.randn(*s_next.shape)
     
-    fV = lambda s_prev: read_stack_forward(s_prev,ut,dt)[0]
-    fu = lambda ut: read_stack_forward(s_prev,ut,dt)[0]
-    fd = lambda dt: read_stack_forward(s_prev,ut,dt)[0] 
+    fV = lambda s_prev: push_forward(s_prev,ut,dt)[0]
+    fu = lambda ut: push_forward(s_prev,ut,dt)[0]
+    fd = lambda dt: push_forward(s_prev,ut,dt)[0] 
+    
+    ds_prev_num = num_grad(fV, s_prev, ds_next)
+    du_num = num_grad(fu, ut, ds_next, h=1e-5)
+    dd_num = num_grad(fd, dt, ds_next, h=1e-5)
+    
+    ds_prev, dut, ddt = push_backward(ds_next, cache) 
+    print(ds_prev.shape, ds_prev.shape)
+    print(du_num.shape, dut.shape)
+    print(dd_num.shape, ddt.shape)
+    
+    print(dut, du_num)
+    print( 'read stack s_prev error: ', rel_error(ds_prev_num, ds_prev))
+    print( 'read stack u error: ', rel_error(du_num, dut))
+    print( 'read stack d error: ', rel_error(dd_num, ddt)) 
     
     """ 
     checking gradient for cumsum
