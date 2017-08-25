@@ -120,27 +120,20 @@ def push_backward(dout,cache):
         dut = 0
     return ds_prev, dut, ddt
 
-def pop_forward(s_prev,V_prev):
-    ids = np.where(s_prev != 0)
-    s_next = s_prev[ids]
-    V_next = V_prev[ids]
-    cache = (s_prev.shape, ids)
-    return s_next, V_next, cache
+#Fuction
+def push_read_pop_forward(Vt,vt,dt,ut,st):
+    st, Vt, cache1 = push_forward(s_prev, ut, dt)
+    rt, cache2 = read_forward(Vt,st)  
+    ids = np.where(st != 0)
+    cache3 = (ids,st.shape,Vt.shape)
+    st = st[ids]
+    Vt = Vt[ids] 
+    cache = [cache1,cache2,cache3]    
+    return rt, st, Vt, cache
 
-def pop_backward(dout, cache):
-    prev_len, ids = cache
-    ds_next, dV_next = dout
-    
-    ds_prev = np.zeros(prev_len,)
-    ds_prev[ids] = ds_next
-    
-    size = dV_next.shape[1]
-    dV_prev = np.zeros((prev_len,size))
-    dV_prev[ids] = dV_next
-    
-    return ds_prev, dV_prev
+def push_read_pop_backward(drt,dst,dVt, cache):
+    return Exception("not implementé")
 
-    
 if __name__ == '__main__':
     import gradient_check
     num_grad = gradient_check.eval_numerical_gradient_array
@@ -172,9 +165,9 @@ if __name__ == '__main__':
     checking gradient for push
     """ 
     length = 5
-    s_prev = np.random.rand(length,) 
-    ut = np.random.rand(1)
-    dt = np.random.rand(1)
+    s_prev = np.random.randn(length,) 
+    ut = np.random.randn(1)
+    dt = np.random.randn(1)
     s_next, cache = push_forward(s_prev,ut,dt)
     ds_next = np.random.randn(*s_next.shape)
     
@@ -195,7 +188,6 @@ if __name__ == '__main__':
     print( 'read stack s_prev error: ', rel_error(ds_prev_num, ds_prev))
     print( 'read stack u error: ', rel_error(du_num, dut))
     print( 'read stack d error: ', rel_error(dd_num, ddt)) 
-    
     """ 
     checking gradient for cumsum
     """ 
