@@ -27,6 +27,7 @@ class RnnSolver(object):
         self.num_epochs = kwargs.pop('num_epochs', 10)
     
         self.print_every = kwargs.pop('print_every', 10)
+        self.val_every = 100
         self.verbose = kwargs.pop('verbose', True)
     
         # Throw an error if there are extra keyword arguments
@@ -112,6 +113,9 @@ class RnnSolver(object):
             for k in self.optim_configs:
               self.optim_configs[k]['learning_rate'] *= self.lr_decay
     
+          if t%self.val_every == 0:
+              acc = self.check_accuracy(self.X_test,self.y_test)
+              print('(Iteration %d / %d) Accuracy: %f' % (t, num_iterations, acc)) 
           # Check train and val accuracy on the first iteration, the last
           # iteration, and at the end of each epoch.
           # TODO: Implement some logic to check Bleu on validation set periodically
@@ -122,6 +126,7 @@ class RnnSolver(object):
     def check_accuracy(self, X, y, num_samples=None, batch_size=100):   
         # Maybe subsample the data
         N = X.shape[0]
+        T = X.shape[1]
         if num_samples is not None and N > num_samples:
           mask = np.random.choice(N, num_samples)
           N = num_samples
@@ -129,14 +134,18 @@ class RnnSolver(object):
           y = y[mask]
         
         # Compute predictions in batches
-        num_batches = N / batch_size
+        num_batches = int(N / batch_size)
         if N % batch_size != 0:
           num_batches += 1
         y_pred = []
+        #here mask will be using only last prediction!
+        
         for i in range(num_batches):
           start = i * batch_size
           end = (i + 1) * batch_size
-          scores = self.model.loss(X[start:end])
+          scores, _ = self.model.run(X[start:end])
+          #we take last position, but in theory we could compute (speed of accuracy)
+          scores = scores[:,-1] 
           y_pred.append(np.argmax(scores, axis=1))
         y_pred = np.hstack(y_pred)
         acc = np.mean(y_pred == y)

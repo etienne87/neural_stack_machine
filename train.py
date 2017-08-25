@@ -29,8 +29,30 @@ class Rnn(object):
         self.params['Wt'] = np.random.randn(hidden_dim, target_size)
         self.params['Wt'] /= np.sqrt(target_size)
         self.params['bt'] = np.zeros(target_size)
-    
-    def loss(self, x, y, h0=None):
+        
+    def run(self, x, h0=None):
+        #Run through x sequence
+        Wx = self.params['Wx']
+        Wh = self.params['Wh']
+        b = self.params['b']
+        Wt = self.params['Wt']
+        bt = self.params['bt']
+        N,T,D = x.shape
+        
+        if h0 is None:
+            h0 = np.zeros((N,Wh.shape[0]))
+            
+        if(self.cell_type == 'rnn'):
+            h, h_cache = rnn_forward(x, h0, Wx, Wh, b)
+        elif(self.cell_type == 'lstm'):
+            h, h_cache = lstm_forward(x, h0, Wx, Wh, b)
+            
+        t, t_cache = temporal_affine_forward(h, Wt, bt)
+        
+        return t, [h_cache, t_cache]
+        
+        
+    def loss(self, x, y, h0=None, mask=None):
         #Run through x sequence
         Wx = self.params['Wx']
         Wh = self.params['Wh']
@@ -52,7 +74,8 @@ class Rnn(object):
         
         N,T,D = t.shape
         yt = y.reshape((-1,1)).repeat(T,1)
-        mask = np.ones((N,T))
+        if mask is None:
+            mask = np.ones((N,T))
         loss, dloss = temporal_softmax_loss(t, yt, mask)
 
         dh, grads['Wt'], grads['bt'] = temporal_affine_backward(dloss, t_cache)
@@ -62,8 +85,7 @@ class Rnn(object):
         elif(self.cell_type == 'lstm'):
             dx, dh0, grads['Wx'], grads['Wh'], grads['b'] = lstm_backward(dh, h_cache)
             
-        
-        #taff, taff_cache = temporal_affine_forward(h, Wt, bt)  
+    
         return loss, grads
     
     
