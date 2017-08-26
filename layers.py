@@ -95,6 +95,7 @@ def softmax_loss(x, y):
   dx /= N
   return loss, dx
 
+nonlin='relu'
 
 def rnn_step_forward(x, prev_h, Wx, Wh, b):
   """
@@ -125,7 +126,12 @@ def rnn_step_forward(x, prev_h, Wx, Wh, b):
   hw = prev_h.dot(Wh)
   
   next_h_lin = xw+hw+b
-  next_h = np.tanh(next_h_lin)
+
+  if nonlin=='relu':
+      next_h = np.maximum(next_h_lin, 0)
+  else:
+      next_h = np.tanh(next_h_lin)
+      
 
   cache = x, prev_h, Wx, Wh, b, next_h 
   ##############################################################################
@@ -157,7 +163,10 @@ def rnn_step_backward(dnext_h, cache):
   # of the output value from tanh.                                             #
   ##############################################################################
   x, prev_h, Wx, Wh, b, next_h = cache
-  dy = dnext_h*(1-next_h*next_h)
+  if nonlin == 'relu':
+      dy = np.where(next_h > 0, dnext_h, 0)
+  else:
+      dy = dnext_h*(1-next_h*next_h)
   dx = dy.dot(Wx.T)
   dprev_h = dy.dot(Wh.T)
   dWx = x.T.dot(dy)
@@ -200,7 +209,6 @@ def rnn_forward(x, h0, Wx, Wh, b):
   #first step : no prev_h
   h[:,0,:], _ = rnn_step_forward(x[:,0,:],h0, Wx, Wh, b)
   for i in range(1,T):
-    xi = x[:,i,:]
     prev_h = h[:,i-1,:]
     h[:,i,:], _ = rnn_step_forward(x[:,i,:], prev_h, Wx, Wh, b)
 
