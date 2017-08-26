@@ -50,15 +50,17 @@ Push/Pop from stack
 2. dt : strength of push for new content
 """
 def st_forward(s_prev,ut,dt):
+    ut = np.atleast_1d(ut)
+    dt = np.atleast_1d(dt)
     t = s_prev.shape[0]
-    if t > 0:
-        
+    if t > 0:    
         cum_sum = np.cumsum(s_prev)
         dirt = cum_sum[-1]-cum_sum
         uncov = ut - dirt
         s_prime = np.maximum(0, s_prev - np.maximum(0, uncov))
     else:
-        s_prime = s_prev    
+        s_prime = s_prev 
+        uncov = 0
     s_next = np.concatenate((s_prime, dt),axis=0)
     cache = (s_prev,ut,dt,s_prime, uncov)
     return s_next, cache
@@ -92,7 +94,7 @@ def neural_stack_forward(Vt,vt,dt,ut,st):
     st1, cache1 = st_forward(st, ut, dt)
     Vt1 = np.concatenate((Vt, vt.reshape(1,-1)))
     rt, cache2 = rt_forward(Vt1,st1)  
-    ids = np.where(st != 0)
+    ids = np.where(st1 != 0)
     cache3 = (ids,st1.shape,Vt1.shape)
     st2 = st1[ids]
     Vt2 = Vt1[ids] 
@@ -119,51 +121,77 @@ if __name__ == '__main__':
     import gradient_check
     num_grad = gradient_check.eval_numerical_gradient_array
     rel_error = gradient_check.rel_error
-
     """ 
-    checking gradient for read 
+    checking output for neural stack 
     """ 
     length = 5
     stack_width = 3
-    st = np.random.rand(length,)   #making sure no st is greater > 1
-    Vt = np.random.rand(length,stack_width)
-    next_r, cache = rt_forward(Vt,st)
-    dnext_r = np.random.randn(*next_r.shape)
     
-    fV = lambda Vt: rt_forward(Vt,st)[0]
-    fs = lambda st: rt_forward(Vt,st)[0] 
+    st = np.zeros(0)
+    Vt = np.zeros((0,stack_width))
+    dts = np.array([0.8,0.5,0.9])
+    uts = np.array([0.0,0.1,0.9])
+    vts = np.eye((stack_width))[:3]
+    rts = []
+    for i in range(3):
+        rt, st, Vt, cache = neural_stack_forward(Vt,vts[i],dts[i],uts[i],st)
+        rts.append(rt)
+        
+    print('output error: ')
+    print(rts[0], 0.8 * vts[0], "err ", rel_error(rts[0], 0.8 * vts[0]))
+    print(rts[1], (0.5 * vts[0]) + (0.5 * vts[1]), "err ", rel_error(rts[1], (0.5 * vts[0]) + (0.5 * vts[1])))
+    print(rts[2], (0.9 * vts[2]) + (0 * vts[2]) + (0.1 * vts[0]), "err ", rel_error(rts[2], (0.9 * vts[2]) + (0 * vts[2]) + (0.1 * vts[0])))
+        
+        
     
-    dV_num = num_grad(fV, Vt, dnext_r)
-    ds_num = num_grad(fs, st, dnext_r, h=1e-5)
-    dV,ds = rt_backward(dnext_r, cache) 
-    print(dV_num.shape, dV.shape)
-    print(ds_num.shape, ds.shape)
-    print( 'read stack V error: ', rel_error(dV_num, dV))
-    print( 'read stack s error: ', rel_error(ds_num, ds)) 
+    """ 
+    checking gradient for read 
+    """ 
+#==============================================================================
+#     length = 5
+#     stack_width = 3
+#     st = np.random.rand(length,)   #making sure no st is greater > 1
+#     Vt = np.random.rand(length,stack_width)
+#     next_r, cache = rt_forward(Vt,st)
+#     dnext_r = np.random.randn(*next_r.shape)
+#     
+#     fV = lambda Vt: rt_forward(Vt,st)[0]
+#     fs = lambda st: rt_forward(Vt,st)[0] 
+#     
+#     dV_num = num_grad(fV, Vt, dnext_r)
+#     ds_num = num_grad(fs, st, dnext_r, h=1e-5)
+#     dV,ds = rt_backward(dnext_r, cache) 
+#     print(dV_num.shape, dV.shape)
+#     print(ds_num.shape, ds.shape)
+#     print( 'read stack V error: ', rel_error(dV_num, dV))
+#     print( 'read stack s error: ', rel_error(ds_num, ds)) 
+#==============================================================================
     """ 
     checking gradient for push/pop
     """ 
-    length = 5
-    s_prev = np.random.randn(length,) 
-    ut = np.random.randn(1)
-    dt = np.random.randn(1)
-    s_next, cache = st_forward(s_prev,ut,dt)
-    ds_next = np.random.randn(*s_next.shape)
-    
-    fV = lambda s_prev: st_forward(s_prev,ut,dt)[0]
-    fu = lambda ut: st_forward(s_prev,ut,dt)[0]
-    fd = lambda dt: st_forward(s_prev,ut,dt)[0] 
-    
-    ds_prev_num = num_grad(fV, s_prev, ds_next)
-    du_num = num_grad(fu, ut, ds_next, h=1e-5)
-    dd_num = num_grad(fd, dt, ds_next, h=1e-5)
-    
-    ds_prev, dut, ddt = st_backward(ds_next, cache) 
-    print(ds_prev.shape, ds_prev.shape)
-    print(du_num.shape, dut.shape)
-    print(dd_num.shape, ddt.shape)
-    
-    print(dut, du_num)
-    print( 'read stack s_prev error: ', rel_error(ds_prev_num, ds_prev))
-    print( 'read stack u error: ', rel_error(du_num, dut))
-    print( 'read stack d error: ', rel_error(dd_num, ddt)) 
+#==============================================================================
+#     length = 5
+#     s_prev = np.random.randn(length,) 
+#     ut = np.random.randn(1)
+#     dt = np.random.randn(1)
+#     s_next, cache = st_forward(s_prev,ut,dt)
+#     ds_next = np.random.randn(*s_next.shape)
+#     
+#     fV = lambda s_prev: st_forward(s_prev,ut,dt)[0]
+#     fu = lambda ut: st_forward(s_prev,ut,dt)[0]
+#     fd = lambda dt: st_forward(s_prev,ut,dt)[0] 
+#     
+#     ds_prev_num = num_grad(fV, s_prev, ds_next)
+#     du_num = num_grad(fu, ut, ds_next, h=1e-5)
+#     dd_num = num_grad(fd, dt, ds_next, h=1e-5)
+#     
+#     ds_prev, dut, ddt = st_backward(ds_next, cache) 
+#     print(ds_prev.shape, ds_prev.shape)
+#     print(du_num.shape, dut.shape)
+#     print(dd_num.shape, ddt.shape)
+#     
+#     print(dut, du_num)
+#     print( 'read stack s_prev error: ', rel_error(ds_prev_num, ds_prev))
+#     print( 'read stack u error: ', rel_error(du_num, dut))
+#     print( 'read stack d error: ', rel_error(dd_num, ddt)) 
+#==============================================================================
