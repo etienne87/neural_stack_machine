@@ -73,8 +73,8 @@ class RnnSolver(object):
         ids = np.arange(N)
         np.random.shuffle(ids)
 
-        x = self.X_train[ids]
-        y = self.y_train[ids]
+        x = self.X_train[ids][:self.batchsize]
+        y = self.y_train[ids][:self.batchsize]
         
         # Compute loss and gradient
         loss, grads = self.model.loss(x, y)

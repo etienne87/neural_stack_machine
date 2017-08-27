@@ -122,10 +122,33 @@ if __name__ == '__main__':
     num_grad = gradient_check.eval_numerical_gradient_array
     rel_error = gradient_check.rel_error
     """ 
-    checking output for neural stack 
+    checking grad/output for neural stack 
     """ 
     length = 5
     stack_width = 3
+    
+    st = np.random.rand(length,)   #making sure no st is greater > 1
+    Vt = np.random.rand(length,stack_width)
+    dt = np.random.rand(1)
+    ut = np.random.rand(1)
+    vt = np.random.rand(1,stack_width) 
+    
+    rt, st, Vt, cache = neural_stack_forward(Vt,vt,dt,ut,st)
+    drt = np.random.randn(*rt.shape)
+    dst = np.random.randn(*st.shape)
+    dVt = np.random.randn(*Vt.shape)
+     
+    fV = lambda Vt: neural_stack_forward(Vt,vt,dt,ut,st)[0]
+    fv = lambda vt: neural_stack_forward(Vt,vt,dt,ut,st)[0] 
+    fd = lambda dt: neural_stack_forward(Vt,vt,dt,ut,st)[0]
+    fu = lambda ut: neural_stack_forward(Vt,vt,dt,ut,st)[0] 
+    fs = lambda st: neural_stack_forward(Vt,vt,dt,ut,st)[0] 
+      
+    
+    dV_num = num_grad(fV, Vt, drt)
+    ds_num = num_grad(fs, st, drt, h=1e-5)
+    dV,ds = neural_stack_backward(drt, cache) 
+
     
     st = np.zeros(0)
     Vt = np.zeros((0,stack_width))

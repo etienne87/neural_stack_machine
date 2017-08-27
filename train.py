@@ -25,7 +25,7 @@ class Rnn(object):
             - 'lstm': ?
         
         """
-        self.cell_type = 'lstm'
+        self.cell_type = 'rnn'
         dim_mul = {'lstm': 4, 'rnn': 1}[self.cell_type]
         self.params['Wx'] = np.random.randn(input_dim, dim_mul * hidden_dim)
         self.params['Wx'] /= np.sqrt(input_dim)
@@ -62,8 +62,7 @@ class Rnn(object):
     
     def backward(self, dout, cache):
         return Exception("Not implemented")
-        
-        
+    
     def loss(self, x, y, h0=None, mask=None):
         loss, grads = 0.0, {}
         t, cache = self.run(x,h0)
@@ -72,9 +71,7 @@ class Rnn(object):
         N,T,D = t.shape
         yt = y.reshape((-1,1)).repeat(T,1)
         if mask is None:
-            #mask = np.ones((N,T))
-            mask = np.arange(0,1,1./T).reshape((1,-1))  
-            mask = mask.repeat(N,0)
+            mask = np.ones((N,T))
          
         loss, dloss = temporal_softmax_loss(t, yt, mask)
 
@@ -93,10 +90,10 @@ class Rnn(object):
 digits = datasets.load_digits()
 X = digits.images
 Y = digits.target
-X = X.reshape(-1,16,4)
+X = X.reshape(-1,64,1)
 
 data = (X,Y)
-model = Rnn(input_dim=X.shape[2], hidden_dim=256, target_size=10)
+model = Rnn(input_dim=X.shape[2], hidden_dim=32, target_size=10)
 solver = RnnSolver(model, data,
                   update_rule='adam',
                   optim_config={
